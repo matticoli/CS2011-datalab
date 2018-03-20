@@ -185,18 +185,9 @@ int evenBits(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-//    printf("x: %d\n\r", x);
-//    int y = x + 2;
-//    printf("y: %d\n\r", y);
-//    int z = (~y) + 1;
-//    return !(x ^ z);
-    int plus1 = x + 1;
-    x = x + plus1;
-    plus1 = !plus1;
-    x = ~x;
-    x = x ^ plus1;
-    x = !x;
-    return x;
+    int y = (x + 2) + x; // Will be 0 if x is tmax or -1
+    int notNeg1 = !(x+1); // 1 if -1 else 0
+    return !y & !notNeg1;// return 1 only if (tmax or -1) and (not -1)
 }
 /* 
  * bitXor - x^y using only ~ and & 
@@ -216,7 +207,7 @@ int bitXor(int x, int y) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  return 2;//((!x & y) | z);
 }
 /* 
  * greatestBitPos - return a mask that marks the position of the
