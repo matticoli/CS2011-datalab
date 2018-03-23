@@ -75,7 +75,7 @@ EXAMPLES OF ACCEPTABLE CODING STYLE:
    */
   int pow2plus1(int x) {
      /* exploit ability of shifts to compute powers of 2 */
-     return (1 << x) + 1;
+     return (1 << x) + 1;//leftmost bit
   }
 
   /*
@@ -177,6 +177,7 @@ int evenBits(void) {
     int mask3 = mask << 8;
     return mask | mask1 | mask2 | mask3;
 }
+
 /*
  * isTmax - returns 1 if x is the maximum, two's complement number,
  *     and 0 otherwise 
@@ -186,10 +187,11 @@ int evenBits(void) {
  */
 int isTmax(int x) {
     int y = (x + 2) + x; // Will be 0 if x is tmax or -1
-    int notNeg1 = !(x+1); // 1 if -1 else 0
+    int notNeg1 = !(x + 1); // 1 if -1 else 0
     return !y & !notNeg1;// return 1 only if (tmax or -1) and (not -1)
 }
-/* 
+
+/*
  * bitXor - x^y using only ~ and & 
  *   Example: bitXor(4, 5) = 1
  *   Legal ops: ~ &
@@ -197,9 +199,10 @@ int isTmax(int x) {
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return ~(~(~x&y)&~(x&~y));//DeMorgan's Law TODO Figure out wtf this is doing
+    return ~(~(~x & y) & ~(x & ~y));//DeMorgan's Law TODO Figure out wtf this is doing
 }
-/* 
+
+/*
  * conditional - same as x ? y : z 
  *   Example: conditional(2,4,5) = 4
  *   Legal ops: ! ~ & ^ | + << >>
@@ -207,9 +210,13 @@ int bitXor(int x, int y) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;//((!x & y) | z);
+    int mask = !x; //0 if x is true (non-zero), 1 if x is false (zero)
+    mask = ~mask + 1; // Two's Complement: 0 becomes 0 (all 0's), 1 becomes -1 (all 1's)
+    return (y & ~mask) | (z & mask); // invert bits again for true case: (y & ~mask) = y if ~mask is true, else 0
+    // vice versa for (z & mask)
 }
-/* 
+
+/*
  * greatestBitPos - return a mask that marks the position of the
  *               most significant 1 bit. If x == 0, return 0
  *   Example: greatestBitPos(96) = 0x40
@@ -218,9 +225,24 @@ int conditional(int x, int y, int z) {
  *   Rating: 4 
  */
 int greatestBitPos(int x) {
-  return 2;
+    int isNegative = x >> 31; // 1 if negative else 0 (sign bit)
+    int signMask = isNegative << 31; // Mask with just sign bit
+    int tmin = 1 << 31; //  Mask with sign bit of 1
+
+    x = x | x >> 1;
+    x = x | x >> 2;
+    x = x | x >> 4;
+    x = x | x >> 8;
+    x = x | x >> 16;
+
+    int oneIfXNotZero = ((0 & !x) | (1 & !!x));
+    int mask = (x >> 1) + oneIfXNotZero;
+    mask = (tmin & signMask) | (mask & ~signMask);
+
+    return mask;
 }
-/* 
+
+/*
  * divpwr2 - Compute x/(2^n), for 0 <= n <= 30
  *  Round toward zero
  *   Examples: divpwr2(15,1) = 7, divpwr2(-33,4) = -2
@@ -229,9 +251,12 @@ int greatestBitPos(int x) {
  *   Rating: 2
  */
 int divpwr2(int x, int n) {
-    return 2;
+    int mask = (1 << n) + ~0;
+    int equalizer = (x >> 31) & mask;
+    return ((x + equalizer) >> n);
 }
-/* 
+
+/*
  * isNonNegative - return 1 if x >= 0, return 0 otherwise 
  *   Example: isNonNegative(-1) = 0.  isNonNegative(0) = 1.
  *   Legal ops: ! ~ & ^ | + << >>
@@ -239,8 +264,9 @@ int divpwr2(int x, int n) {
  *   Rating: 3
  */
 int isNonNegative(int x) {
-  return 2;
+    return !(x >> 31);// Shift by 31 to get sign bit and invert
 }
+
 /*
  * satMul3 - multiplies by 3, saturating to Tmin or Tmax if overflow
  *  Examples: satMul3(0x10000000) = 0x30000000
@@ -253,9 +279,24 @@ int isNonNegative(int x) {
  *  Rating: 3
  */
 int satMul3(int x) {
-    return 2;
+    int THREExME = x + x;// mult by 3
+    int signX = x >> 31;// Get le sine bit
+    int sign2X = THREExME >> 31;
+        THREExME = THREExME + x;
+    int sign3X = THREExME >> 31;
+    int overflowMask = ((signX & sign2X & sign3X) | !(signX + sign2X + sign3X));
+//0 if x is true (non-zero), 1 if x is false (zero)
+
+//    printf("%d\n", -1 >> 31);
+    int mask = ~!!overflowMask + 1; // Two's Complement: 0 becomes 0 (all 0's), 1 becomes -1 (all 1's)
+
+    int signMask = ~(!signX) + 1;
+    signMask = (signMask ) ^ (1 << 31);
+
+    return (signMask & ~mask) | (THREExME & mask);
 }
-/* 
+
+/*
  * isGreater - if x > y  then return 1, else return 0 
  *   Example: isGreater(4,5) = 0, isGreater(5,4) = 1
  *   Legal ops: ! ~ & ^ | + << >>
@@ -263,9 +304,36 @@ int satMul3(int x) {
  *   Rating: 3
  */
 int isGreater(int x, int y) {
-  return 2;
+    int xSign = !!(x >> 31);
+    int ySign = !!(y >> 31);
+    int diffSign = !!((x + (~y + 1)) >> 31);
+//    int ndiffSign = !!((y + (~x + 1)) >> 31);
+//    printf("x: %d\ty: %d\tx-y: %d\ty-x: %d\n", xSign, ySign, diffSign, 0);
+
+    int diffNotZero = ((0 & !(x + (~y + 1))) | (1 & !!(x + (~y + 1))));
+//    int ndiffNotZero = ((0 & !(y + (~x + 1))) | (1 & !!(y + (~x + 1))));
+
+
+    int isGreater = (!xSign & ySign); // x+, y-
+//    isGreater = isGreater + !(xSign & !ySign);
+//    printf("1: %d\t", isGreater);
+    isGreater = isGreater + (!xSign & !ySign & diffSign);// x+, y+, (x-y)+
+//    printf("2: %d\t", isGreater);
+    isGreater = isGreater + (xSign & ySign & !diffSign);// x-, y-, (y-x)-
+//    printf("3: %d\n", isGreater);
+//    return x > y;
+    return isGreater & (diffNotZero | !y);
+
+//    int oneIfXNotZero = ((0 & !diffSign) | (1 & !!diffSign));
+//    int overflow = ((xSign & diffSign) | !(xSign + diffSign));
+//
+//    printf("XSign %d\tYSign %d\tDiffSign %d\tSum %d \n", xSign, ySign, diffSign, (x + (~y + 1)));
+//
+//    return //((!diffSign & oneIfXNotZero & !overflow) | (!xSign & ySign & diffSign)) &&
+//           ((xSign + ySign+ diffSign) == 3 || !(xSign + ySign+ diffSign));
 }
-/* 
+
+/*
  * isAsciiDigit - return 1 if 0x30 <= x <= 0x39 (ASCII codes for characters '0' to '9')
  *   Example: isAsciiDigit(0x35) = 1.
  *            isAsciiDigit(0x3a) = 0.
@@ -275,22 +343,24 @@ int isGreater(int x, int y) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+    return 2;
 }
+
 /*
  * trueFiveEighths - multiplies by 5/8 rounding toward 0,
  *  avoiding errors due to overflow
  *  Examples: trueFiveEighths(11) = 6
  *            trueFiveEighths(-9) = -5
- *            trueFiveEighths(0x30000000) = 0x1E000000 (no overflow)
+ *            trueFiveEighths(~) = 0x1E000000 (no overflow)
  *  Legal ops: ! ~ & ^ | + << >>
  *  Max ops: 25
  *  Rating: 4
  */
-int trueFiveEighths(int x)
-{
-    return 2;
+int trueFiveEighths(int x) {
+    long mult = x + x + x + x + x;
+    return mult >> 3;
 }
+
 /*
  * ilog2 - return floor(log base 2 of x), where x > 0
  *   Example: ilog2(16) = 4
@@ -299,9 +369,11 @@ int trueFiveEighths(int x)
  *   Rating: 4
  */
 int ilog2(int x) {
-  return 2;
+    // (1 << x) == 2^x
+    return 2;
 }
-/* 
+
+/*
  * float_neg - Return bit-level equivalent of expression -f for
  *   floating point argument f.
  *   Both the argument and result are passed as unsigned int's, but
@@ -313,21 +385,29 @@ int ilog2(int x) {
  *   Rating: 2
  */
 unsigned float_neg(unsigned uf) {
- return 2;
+    int exp = uf >> 23 & 0xff;
+    int mant = uf & 0x7fffff;
+
+    if((exp == 0xff) & (mant != 0)) {
+        return uf;
+    }
+    return uf ^ (1 << 31);
 }
-/* 
+
+/*
  * float_i2f - Return bit-level equivalent of expression (float) x
  *   Result is returned as unsigned int, but
- *   it is to be interpreted as the bit-level representation of a
+ *   it is to be interpreted as the b it-level representation of a
  *   single-precision floating point values.
  *   Legal ops: Any integer/unsigned operations incl. ||, &&. also if, while
  *   Max ops: 30
  *   Rating: 4
  */
 unsigned float_i2f(int x) {
-  return 2;
+    return 2;
 }
-/* 
+
+/*
  * float_twice - Return bit-level equivalent of expression 2*f for
  *   floating point argument f.
  *   Both the argument and result are passed as unsigned int's, but
@@ -339,5 +419,5 @@ unsigned float_i2f(int x) {
  *   Rating: 4
  */
 unsigned float_twice(unsigned uf) {
-  return 2;
+    return 2;
 }

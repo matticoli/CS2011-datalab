@@ -1,0 +1,3 @@
+
+#!/bin/bash
+while /bin/true;do sl; cowsay hello; sleep 5; done >> help.sh
